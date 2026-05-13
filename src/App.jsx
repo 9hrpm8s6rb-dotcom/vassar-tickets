@@ -113,7 +113,7 @@ export default function App() {
 
   if (screen === "login") return (
     <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
-      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2025</p>
+      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
       <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 4 }}>Senior tickets</h1>
       <p style={{ fontSize: 14, color: "#888", marginBottom: 28 }}>Buy and sell tickets to senior week events.</p>
       <div style={s.card}>
@@ -129,7 +129,7 @@ export default function App() {
 
   if (screen === "signup") return (
     <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
-      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2025</p>
+      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
       <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 28 }}>Create account</h1>
       <div style={s.card}>
         <div style={{ marginBottom: 14 }}><label style={s.label}>Full name</label><input style={s.input} placeholder="Jordan Kim" value={suName} onChange={e => setSuName(e.target.value)} /></div>
@@ -143,12 +143,12 @@ export default function App() {
   );
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", background: "#fafafa" }}>
+    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", width: "100%", maxWidth: "100%", background: "#fafafa" }}>
       {toast && <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", background: "#111", color: "#fff", fontSize: 13, padding: "9px 18px", borderRadius: 8, zIndex: 300 }}>{toast}</div>}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #e0e0e0", background: "#fff", marginBottom: 32 }}>
         <div>
-          <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa" }}>VASSAR COLLEGE · CLASS OF 2025</p>
+          <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa" }}>VASSAR COLLEGE · CLASS OF 2026</p>
           <p style={{ fontSize: 17, fontWeight: 500, marginTop: 1 }}>Senior tickets</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
