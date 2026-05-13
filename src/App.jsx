@@ -115,7 +115,7 @@ export default function App() {
     <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
       <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
       <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 4 }}>Senior tickets</h1>
-      <p style={{ fontSize: 14, color: "#888", marginBottom: 28 }}>Buy and sell tickets to senior week events.</p>
+      <p style={{ fontSize: 14,  color: "#888", marginBottom: 28 }}>Buy and sell tickets to senior week events.</p>
       <div style={s.card}>
         <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="yourname@vassar.edu" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} /></div>
         <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={loginPw} onChange={e => setLoginPw(e.target.value)} /></div>
