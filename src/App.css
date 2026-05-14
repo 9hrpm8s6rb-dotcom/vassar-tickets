@@ -197,6 +197,29 @@ textarea:focus {
   text-align: center;
 }
 
+.how-it-works {
+  background: rgba(255, 253, 249, 0.58);
+  border: 1px solid rgba(67, 48, 40, 0.1);
+  border-radius: 8px;
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.how-it-works h2 {
+  color: #241d1a;
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+}
+
+.how-it-works ol {
+  color: #6f625c;
+  display: grid;
+  font-size: 0.88rem;
+  gap: 8px;
+  line-height: 1.45;
+  padding-left: 20px;
+}
+
 .error-text {
   color: #b3261e;
   font-size: 0.88rem;
@@ -249,6 +272,7 @@ textarea:focus {
   color: #6f625c;
   font-size: 0.92rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .market-hero {
@@ -299,6 +323,21 @@ textarea:focus {
   background: #1f605a;
   border-color: #1f605a;
   color: #fff;
+}
+
+.listing-tools {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  margin: 0 auto;
+  max-width: 1180px;
+  padding: 0 clamp(18px, 4vw, 44px) 22px;
+}
+
+.search-field,
+.sort-field {
+  margin: 0;
 }
 
 .market-layout {
@@ -539,6 +578,10 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .listing-tools {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     order: -1;
     position: static;
@@ -575,5 +618,11 @@ textarea:focus {
 
   .button {
     width: 100%;
+  }
+
+  .account-actions .button {
+    flex: 0 0 auto;
+    min-width: 110px;
+    width: auto;
   }
 }

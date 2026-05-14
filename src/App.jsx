@@ -31,6 +31,8 @@ export default function App() {
   const [screen, setScreen] = useState("login");
   const [currentUser, setCurrentUser] = useState(null);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortMode, setSortMode] = useState("newest");
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showListModal, setShowListModal] = useState(false);
@@ -217,9 +219,24 @@ export default function App() {
   }
 
   const filteredTickets = useMemo(() => {
-    if (activeFilter === "all") return tickets;
-    return tickets.filter((ticket) => ticket.event === activeFilter);
-  }, [activeFilter, tickets]);
+    const query = searchTerm.trim().toLowerCase();
+    const visibleTickets = tickets.filter((ticket) => {
+      const matchesEvent = activeFilter === "all" || ticket.event === activeFilter;
+      const matchesSearch =
+        !query ||
+        [ticket.event, ticket.date, ticket.seller, ticket.notes]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(query));
+
+      return matchesEvent && matchesSearch;
+    });
+
+    return [...visibleTickets].sort((a, b) => {
+      if (sortMode === "price-low") return Number(a.price) - Number(b.price);
+      if (sortMode === "price-high") return Number(b.price) - Number(a.price);
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    });
+  }, [activeFilter, searchTerm, sortMode, tickets]);
 
   const myListings = currentUser
     ? tickets.filter((ticket) => ticket.email === currentUser.email)
@@ -267,6 +284,14 @@ export default function App() {
               </button>
             </p>
           </form>
+          <section className="how-it-works" aria-label="How it works">
+            <h2>How it works</h2>
+            <ol>
+              <li>Sign in with your Vassar email.</li>
+              <li>Browse listings by event, price, or seller.</li>
+              <li>Email the seller to coordinate payment and pickup.</li>
+            </ol>
+          </section>
           <p className="auth-note">Restricted to Vassar email addresses.</p>
         </section>
       </main>
@@ -372,14 +397,34 @@ export default function App() {
         ))}
       </nav>
 
+      <section className="listing-tools" aria-label="Search and sort listings">
+        <label className="search-field">
+          <span>Search listings</span>
+          <input
+            type="search"
+            placeholder="Search event, seller, date, or notes"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+          />
+        </label>
+        <label className="sort-field">
+          <span>Sort by</span>
+          <select value={sortMode} onChange={(event) => setSortMode(event.target.value)}>
+            <option value="newest">Newest first</option>
+            <option value="price-low">Lowest price</option>
+            <option value="price-high">Highest price</option>
+          </select>
+        </label>
+      </section>
+
       <div className="market-layout">
         <section className="listing-column" aria-label="Ticket listings">
           {ticketLoading ? (
             <div className="empty-state">Loading listings...</div>
           ) : filteredTickets.length === 0 ? (
             <div className="empty-state">
-              <h3>No tickets listed yet</h3>
-              <p>Try another event filter or check back soon.</p>
+              <h3>No matching tickets</h3>
+              <p>Try another event filter, search term, or check back soon.</p>
             </div>
           ) : (
             filteredTickets.map((ticket) => (
