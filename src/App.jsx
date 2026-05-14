@@ -379,7 +379,7 @@ export default function App() {
             <ol>
               <li>Sign in with your Vassar email.</li>
               <li>Browse listings by event, price, or seller.</li>
-              <li>Email the seller to coordinate payment and pickup.</li>
+              <li>Contact the seller to coordinate payment and pickup.</li>
             </ol>
           </section>
           <p className="auth-note">Restricted to Vassar email addresses.</p>
