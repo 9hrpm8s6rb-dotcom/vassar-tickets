@@ -526,7 +526,7 @@ export default function App() {
             <label>
               <span>Date and time</span>
               <input
-                placeholder="Sat, May 24 at 7pm"
+                placeholder="Sun, May 24 at 7pm"
                 value={lmDate}
                 onChange={(event) => setLmDate(event.target.value)}
                 required
