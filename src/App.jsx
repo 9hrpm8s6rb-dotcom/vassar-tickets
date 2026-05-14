@@ -211,7 +211,7 @@ export default function App() {
             <div style={{ marginBottom: 14 }}><label style={s.label}>Event</label><select style={s.input} value={lmEvent} onChange={e => setLmEvent(e.target.value)}>{EVENTS.map(ev => <option key={ev}>{ev}</option>)}</select></div>
             <div style={{ marginBottom: 14 }}><label style={s.label}>Date & time</label><input style={s.input} placeholder="e.g. Sat, May 24 · 7pm" value={lmDate} onChange={e => setLmDate(e.target.value)} /></div>
             <div style={{ marginBottom: 14 }}><label style={s.label}>Asking price ($)</label><input style={s.input} type="number" placeholder="40" value={lmPrice} onChange={e => setLmPrice(e.target.value)} /></div>
-            <div style={{ marginBottom: 14 }}><label style={s.label}>Venmo handle + notes</label><textarea style={{ ...s.input, height: 72, resize: "none" }} placeholder="@yourvenmo, seat info, etc." value={lmNotes} onChange={e => setLmNotes(e.target.value)} /></div>
+            <div style={{ marginBottom: 14 }}><label style={s.label}>Venmo handle + notes</label><textarea style={{ ...s.input, height: 72, resize: "none" }} placeholder="@yourvenmo, zelle, etc." value={lmNotes} onChange={e => setLmNotes(e.target.value)} /></div>
             {lmErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{lmErr}</p>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button style={s.btn} onClick={() => setShowListModal(false)}>Cancel</button>
