@@ -217,8 +217,11 @@ export default function App() {
     }
   }
 
-  async function removeListing(id) {
-    await supabase.from("listings").delete().eq("id", id);
+  async function removeListing(ticket) {
+    const confirmed = window.confirm("Are you sure you'd like to delete this listing?");
+    if (!confirmed) return;
+
+    await supabase.from("listings").delete().eq("id", ticket.id);
     fetchTickets();
     showToast("Listing removed.");
   }
@@ -477,11 +480,11 @@ export default function App() {
                       <small>{formatPrice(ticket.price)}</small>
                     </span>
                     <button
-                      className="icon-button"
+                      className="remove-button"
                       aria-label={`Remove ${ticket.event} listing`}
-                      onClick={() => removeListing(ticket.id)}
+                      onClick={() => removeListing(ticket)}
                     >
-                      x
+                      Remove
                     </button>
                   </li>
                 ))}

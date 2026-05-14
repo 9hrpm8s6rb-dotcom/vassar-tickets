@@ -481,6 +481,23 @@ textarea:focus {
   width: 34px;
 }
 
+.remove-button {
+  background: #fff;
+  border: 1px solid #d6ccc4;
+  border-radius: 7px;
+  color: #8b2430;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.remove-button:hover {
+  border-color: rgba(139, 36, 48, 0.45);
+  background: rgba(139, 36, 48, 0.06);
+}
+
 .empty-state {
   background: rgba(255, 253, 249, 0.65);
   border: 1px dashed #d6ccc4;
