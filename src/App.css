@@ -376,12 +376,30 @@ textarea:focus {
   transform: translateY(-2px);
 }
 
+.ticket-card.is-sold {
+  opacity: 0.68;
+}
+
 .ticket-event {
+  align-items: center;
   color: #8b2430;
+  display: flex;
+  gap: 8px;
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.status-badge {
+  background: #efe6df;
+  border: 1px solid #d6ccc4;
+  border-radius: 999px;
+  color: #5f534e;
+  font-size: 0.68rem;
+  letter-spacing: 0;
+  padding: 3px 8px;
+  text-transform: none;
 }
 
 .ticket-main,
@@ -453,6 +471,7 @@ textarea:focus {
   align-items: center;
   border-top: 1px solid rgba(67, 48, 40, 0.1);
   display: flex;
+  gap: 12px;
   justify-content: space-between;
   padding: 12px 0 10px;
 }
@@ -481,16 +500,37 @@ textarea:focus {
   width: 34px;
 }
 
+.listing-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.mini-button,
 .remove-button {
   background: #fff;
   border: 1px solid #d6ccc4;
   border-radius: 7px;
-  color: #8b2430;
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 900;
   min-height: 34px;
   padding: 7px 10px;
+}
+
+.mini-button {
+  color: #1f605a;
+}
+
+.mini-button:hover {
+  border-color: rgba(31, 96, 90, 0.45);
+  background: rgba(31, 96, 90, 0.06);
+}
+
+.remove-button {
+  color: #8b2430;
 }
 
 .remove-button:hover {
@@ -503,6 +543,9 @@ textarea:focus {
   border: 1px dashed #d6ccc4;
   border-radius: 8px;
   color: #7a6c65;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
   padding: 32px;
 }
 
@@ -580,6 +623,21 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.posted-text {
+  color: #7a6c65;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.site-footer {
+  color: #7a6c65;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 32px auto 0;
+  max-width: 1180px;
+  padding: 0 clamp(18px, 4vw, 44px);
+}
+
 @media (max-width: 820px) {
   .topbar,
   .market-hero {
@@ -620,6 +678,7 @@ textarea:focus {
 
   .ticket-main,
   .ticket-meta,
+  .listing-actions,
   .modal-actions {
     align-items: stretch;
     flex-direction: column;
