@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 
-const EVENTS = ["Senior Formal", "Senior Brunch", "Champagne Reception"];
+const EVENTS = ["Senior Formal", "Senior Brunch", "Champagne Reception", "Commencement"];
 const WRITE_IN_EVENT = "write-in";
 
 function getDisplayName(user) {
