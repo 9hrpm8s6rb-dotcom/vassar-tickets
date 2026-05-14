@@ -350,7 +350,7 @@ export default function App() {
       <section className="market-hero">
         <div>
           <p className="eyebrow">Student-only exchange</p>
-          <h2>Find a ticket without the group-chat scramble.</h2>
+          <h2>Find a ticket without the hassle.</h2>
           <p>
             Browse current listings, message sellers directly, and keep your own posts easy to manage.
           </p>
