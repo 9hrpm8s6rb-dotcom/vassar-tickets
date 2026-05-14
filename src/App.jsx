@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 
-const EVENTS = ["Senior Formal", "Senior Brunch", "Champagne Reception", "Other"];
+const EVENTS = ["Senior Formal", "Senior Brunch", "Champagne Reception"];
+const WRITE_IN_EVENT = "write-in";
 
 function getDisplayName(user) {
   return user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
@@ -45,6 +46,7 @@ export default function App() {
   const [suPw, setSuPw] = useState("");
   const [suErr, setSuErr] = useState("");
   const [lmEvent, setLmEvent] = useState("Senior Formal");
+  const [lmCustomEvent, setLmCustomEvent] = useState("");
   const [lmDate, setLmDate] = useState("");
   const [lmPrice, setLmPrice] = useState("");
   const [lmNotes, setLmNotes] = useState("");
@@ -175,9 +177,10 @@ export default function App() {
   async function submitListing(event) {
     event?.preventDefault();
     const price = Number.parseFloat(lmPrice);
+    const listingEvent = lmEvent === WRITE_IN_EVENT ? lmCustomEvent.trim() : lmEvent;
 
-    if (!lmDate.trim() || Number.isNaN(price) || price < 0) {
-      setLmErr("Add a date and a valid asking price.");
+    if (!listingEvent || !lmDate.trim() || Number.isNaN(price) || price < 0) {
+      setLmErr("Add an event, date, and valid asking price.");
       return;
     }
 
@@ -186,7 +189,7 @@ export default function App() {
       const { error } = await withTimeout(
         supabase.from("listings").insert([
           {
-            event: lmEvent,
+            event: listingEvent,
             date: lmDate.trim(),
             price,
             notes: lmNotes.trim(),
@@ -202,6 +205,8 @@ export default function App() {
       }
 
       setShowListModal(false);
+      setLmEvent("Senior Formal");
+      setLmCustomEvent("");
       setLmDate("");
       setLmPrice("");
       setLmNotes("");
@@ -504,8 +509,20 @@ export default function App() {
                 {EVENTS.map((eventName) => (
                   <option key={eventName}>{eventName}</option>
                 ))}
+                <option value={WRITE_IN_EVENT}>Other</option>
               </select>
             </label>
+            {lmEvent === WRITE_IN_EVENT && (
+              <label>
+                <span>Event name</span>
+                <input
+                  placeholder="e.g. Scavenger hunt"
+                  value={lmCustomEvent}
+                  onChange={(event) => setLmCustomEvent(event.target.value)}
+                  required
+                />
+              </label>
+            )}
             <label>
               <span>Date and time</span>
               <input
