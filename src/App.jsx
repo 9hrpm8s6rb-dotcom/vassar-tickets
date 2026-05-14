@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
+import { Analytics } from "@vercel/analytics/react";
 
 export default function App() {
   const [screen, setScreen] = useState("login");
@@ -112,34 +113,40 @@ export default function App() {
   };
 
   if (screen === "login") return (
-    <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
-      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
-      <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 4 }}>Senior tickets</h1>
-      <p style={{ fontSize: 14,  color: "#888", marginBottom: 28 }}>Buy and sell tickets to senior week events.</p>
-      <div style={s.card}>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="yourname@vassar.edu" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} /></div>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={loginPw} onChange={e => setLoginPw(e.target.value)} /></div>
-        {loginErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{loginErr}</p>}
-        <button style={{ ...s.btnDark, width: "100%", opacity: loading ? 0.6 : 1 }} onClick={doLogin}>{loading ? "Signing in..." : "Sign in"}</button>
-        <p style={{ textAlign: "center", fontSize: 13, color: "#888", marginTop: 14 }}>New here? <span style={{ color: "#111", cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("signup")}>Create account</span></p>
+    <>
+      <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
+        <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 4 }}>Senior tickets</h1>
+        <p style={{ fontSize: 14,  color: "#888", marginBottom: 28 }}>Buy and sell tickets to senior week events.</p>
+        <div style={s.card}>
+          <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="yourname@vassar.edu" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} /></div>
+          <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={loginPw} onChange={e => setLoginPw(e.target.value)} /></div>
+          {loginErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{loginErr}</p>}
+          <button style={{ ...s.btnDark, width: "100%", opacity: loading ? 0.6 : 1 }} onClick={doLogin}>{loading ? "Signing in..." : "Sign in"}</button>
+          <p style={{ textAlign: "center", fontSize: 13, color: "#888", marginTop: 14 }}>New here? <span style={{ color: "#111", cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("signup")}>Create account</span></p>
+        </div>
+        <p style={{ textAlign: "center", fontSize: 12, color: "#bbb", marginTop: 14 }}>Restricted to @vassar.edu</p>
       </div>
-      <p style={{ textAlign: "center", fontSize: 12, color: "#bbb", marginTop: 14 }}>Restricted to @vassar.edu</p>
-    </div>
+      <Analytics />
+    </>
   );
 
   if (screen === "signup") return (
-    <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
-      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
-      <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 28 }}>Create account</h1>
-      <div style={s.card}>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Full name</label><input style={s.input} placeholder="Jordan Kim" value={suName} onChange={e => setSuName(e.target.value)} /></div>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="jordankim@vassar.edu" value={suEmail} onChange={e => setSuEmail(e.target.value)} /></div>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={suPw} onChange={e => setSuPw(e.target.value)} /></div>
-        {suErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{suErr}</p>}
-        <button style={{ ...s.btnDark, width: "100%", opacity: loading ? 0.6 : 1 }} onClick={doSignup}>{loading ? "Creating account..." : "Create account"}</button>
-        <p style={{ textAlign: "center", fontSize: 13, color: "#888", marginTop: 14 }}><span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("login")}>Back to sign in</span></p>
+    <>
+      <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
+        <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
+        <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 28 }}>Create account</h1>
+        <div style={s.card}>
+          <div style={{ marginBottom: 14 }}><label style={s.label}>Full name</label><input style={s.input} placeholder="Jordan Kim" value={suName} onChange={e => setSuName(e.target.value)} /></div>
+          <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="jordankim@vassar.edu" value={suEmail} onChange={e => setSuEmail(e.target.value)} /></div>
+          <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={suPw} onChange={e => setSuPw(e.target.value)} /></div>
+          {suErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{suErr}</p>}
+          <button style={{ ...s.btnDark, width: "100%", opacity: loading ? 0.6 : 1 }} onClick={doSignup}>{loading ? "Creating account..." : "Create account"}</button>
+          <p style={{ textAlign: "center", fontSize: 13, color: "#888", marginTop: 14 }}><span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("login")}>Back to sign in</span></p>
+        </div>
       </div>
-    </div>
+      <Analytics />
+    </>
   );
 
   return (
@@ -245,6 +252,7 @@ export default function App() {
           </div>
         </div>
       )}
+      <Analytics />
     </div>
   );
 }
