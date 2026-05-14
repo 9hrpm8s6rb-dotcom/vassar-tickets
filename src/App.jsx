@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 
@@ -9,6 +9,50 @@ const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "")
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
+const DEMO_USER = { email: "demo.student@vassar.edu", name: "Demo Student" };
+
+function createDemoListings() {
+  const now = Date.now();
+
+  return [
+    {
+      id: "demo-formal",
+      event: "Senior Formal",
+      date: "Sun, May 24 at 7pm",
+      price: 45,
+      quantity: 1,
+      status: "available",
+      notes: "Venmo preferred. Can meet near Main Building.",
+      seller: "Maya Chen",
+      email: "maya.demo@vassar.edu",
+      created_at: new Date(now - 12 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "demo-brunch",
+      event: "Senior Brunch",
+      date: "Mon, May 25 at 11am",
+      price: 25,
+      quantity: 2,
+      status: "available",
+      notes: "Selling both together or separately.",
+      seller: "Sam Rivera",
+      email: "sam.demo@vassar.edu",
+      created_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "demo-other",
+      event: "Scavenger hunt",
+      date: "Fri, May 22 at 3pm",
+      price: 10,
+      quantity: 1,
+      status: "sold",
+      notes: "Demo write-in event.",
+      seller: "Demo Student",
+      email: DEMO_USER.email,
+      created_at: new Date(now - 26 * 60 * 60 * 1000).toISOString(),
+    },
+  ];
+}
 
 function getDisplayName(user) {
   return user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
@@ -60,12 +104,13 @@ function withTimeout(promise, message = "That took too long. Check your connecti
 }
 
 export default function App() {
-  const [screen, setScreen] = useState("login");
-  const [currentUser, setCurrentUser] = useState(null);
+  const [isDemo] = useState(() => new URLSearchParams(window.location.search).get("demo") === "1");
+  const [screen, setScreen] = useState(() => (isDemo ? "app" : "login"));
+  const [currentUser, setCurrentUser] = useState(() => (isDemo ? DEMO_USER : null));
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortMode, setSortMode] = useState("newest");
-  const [tickets, setTickets] = useState([]);
+  const [tickets, setTickets] = useState(() => (isDemo ? createDemoListings() : []));
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showListModal, setShowListModal] = useState(false);
   const [toast, setToast] = useState("");
@@ -86,20 +131,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [ticketLoading, setTicketLoading] = useState(false);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setCurrentUser({
-          email: session.user.email,
-          name: getDisplayName(session.user),
-        });
-        setScreen("app");
-        fetchTickets();
-      }
-    });
-  }, []);
+  const fetchTickets = useCallback(async () => {
+    if (isDemo) return;
 
-  async function fetchTickets() {
     setTicketLoading(true);
     try {
       const { data, error } = await withTimeout(
@@ -113,11 +147,35 @@ export default function App() {
     } finally {
       setTicketLoading(false);
     }
-  }
+  }, [isDemo]);
+
+  useEffect(() => {
+    if (isDemo) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setCurrentUser({
+          email: session.user.email,
+          name: getDisplayName(session.user),
+        });
+        setScreen("app");
+        fetchTickets();
+      }
+    });
+  }, [fetchTickets, isDemo]);
 
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(""), 2400);
+  }
+
+  function resetListingForm() {
+    setLmEvent("Senior Formal");
+    setLmCustomEvent("");
+    setLmDate("");
+    setLmPrice("");
+    setLmQuantity("1");
+    setLmNotes("");
   }
 
   async function doLogin(event) {
@@ -200,6 +258,13 @@ export default function App() {
   }
 
   async function doLogout() {
+    if (isDemo) {
+      setSelectedTicket(null);
+      setTickets(createDemoListings());
+      showToast("Demo reset.");
+      return;
+    }
+
     await supabase.auth.signOut();
     setCurrentUser(null);
     setTickets([]);
@@ -229,6 +294,19 @@ export default function App() {
       email: currentUser.email,
     };
 
+    if (isDemo) {
+      const demoListing = {
+        ...listing,
+        id: `demo-${Date.now()}`,
+        created_at: new Date().toISOString(),
+      };
+      setTickets((currentTickets) => [demoListing, ...currentTickets]);
+      setShowListModal(false);
+      resetListingForm();
+      showToast("Demo listing posted.");
+      return;
+    }
+
     try {
       let { error } = await withTimeout(supabase.from("listings").insert([listing]));
 
@@ -245,12 +323,7 @@ export default function App() {
       }
 
       setShowListModal(false);
-      setLmEvent("Senior Formal");
-      setLmCustomEvent("");
-      setLmDate("");
-      setLmPrice("");
-      setLmQuantity("1");
-      setLmNotes("");
+      resetListingForm();
       fetchTickets();
       showToast("Listing posted.");
     } catch (error) {
@@ -262,6 +335,13 @@ export default function App() {
     const confirmed = window.confirm("Are you sure you'd like to delete this listing?");
     if (!confirmed) return;
 
+    if (isDemo) {
+      setTickets((currentTickets) => currentTickets.filter((item) => item.id !== ticket.id));
+      setSelectedTicket(null);
+      showToast("Demo listing removed.");
+      return;
+    }
+
     await supabase.from("listings").delete().eq("id", ticket.id);
     fetchTickets();
     showToast("Listing removed.");
@@ -269,6 +349,19 @@ export default function App() {
 
   async function toggleSoldStatus(ticket) {
     const nextStatus = ticket.status === "sold" ? "available" : "sold";
+
+    if (isDemo) {
+      const updatedTicket = { ...ticket, status: nextStatus };
+      setTickets((currentTickets) =>
+        currentTickets.map((item) => (item.id === ticket.id ? updatedTicket : item)),
+      );
+      setSelectedTicket((currentTicket) =>
+        currentTicket?.id === ticket.id ? updatedTicket : currentTicket,
+      );
+      showToast(nextStatus === "sold" ? "Demo listing marked sold." : "Demo listing marked available.");
+      return;
+    }
+
     const { error } = await supabase.from("listings").update({ status: nextStatus }).eq("id", ticket.id);
 
     if (error) {
@@ -283,6 +376,11 @@ export default function App() {
   async function reportListing(ticket) {
     const reason = window.prompt("What should we know about this listing?");
     if (reason === null) return;
+
+    if (isDemo) {
+      showToast("Demo report recorded.");
+      return;
+    }
 
     const { error } = await supabase.from("reports").insert([
       {
@@ -448,6 +546,11 @@ export default function App() {
   return (
     <main className="app-shell">
       {toast && <div className="toast">{toast}</div>}
+      {isDemo && (
+        <div className="demo-banner">
+          Demo mode: actions only change sample data in this browser.
+        </div>
+      )}
 
       <header className="topbar">
         <div>
@@ -457,7 +560,7 @@ export default function App() {
         <div className="account-actions">
           <span>{currentUser?.name}</span>
           <button className="button button-ghost" onClick={doLogout}>
-            Sign out
+            {isDemo ? "Reset demo" : "Sign out"}
           </button>
         </div>
       </header>

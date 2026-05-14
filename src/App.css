@@ -246,6 +246,15 @@ textarea:focus {
   z-index: 300;
 }
 
+.demo-banner {
+  background: #1f605a;
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 10px clamp(18px, 4vw, 44px);
+  text-align: center;
+}
+
 .topbar {
   align-items: center;
   background: rgba(255, 253, 249, 0.86);
