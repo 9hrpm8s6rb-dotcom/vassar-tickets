@@ -515,9 +515,6 @@ export default function App() {
             <div className="empty-state">
               <h3>No matching tickets</h3>
               <p>Try another event filter, search term, or check back soon.</p>
-              <button className="button button-primary" onClick={() => setShowListModal(true)}>
-                List a ticket
-              </button>
             </div>
           ) : (
             filteredTickets.map((ticket) => (
