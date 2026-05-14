@@ -467,7 +467,7 @@ export default function App() {
           <p className="eyebrow">Student-only exchange</p>
           <h2>Find a ticket without the hassle.</h2>
           <p>
-            Browse current listings, contact sellers directly, and keep your own posts easy to manage.
+            Browse current listings, contact sellers directly, and post your own tickets in minutes.
           </p>
         </div>
         <button className="button button-primary" onClick={() => setShowListModal(true)}>
