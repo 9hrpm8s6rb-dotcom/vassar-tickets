@@ -1,5 +1,31 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import "./App.css";
 import { supabase } from "./supabase";
+
+const EVENTS = ["Senior Formal", "Senior Brunch", "Champagne Reception", "Other"];
+
+function getDisplayName(user) {
+  return user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
+}
+
+function formatPrice(price) {
+  const value = Number(price);
+  if (Number.isNaN(value)) return "$0";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+  }).format(value);
+}
+
+function withTimeout(promise, message = "That took too long. Check your connection and try again.") {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), 12000);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
 
 export default function App() {
   const [screen, setScreen] = useState("login");
@@ -22,13 +48,15 @@ export default function App() {
   const [lmNotes, setLmNotes] = useState("");
   const [lmErr, setLmErr] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const EVENTS = ["Senior Formal", "Senior Brunch", "Champagne Reception", "Other"];
+  const [ticketLoading, setTicketLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        setCurrentUser({ email: session.user.email, name: session.user.user_metadata?.name || session.user.email.split("@")[0] });
+        setCurrentUser({
+          email: session.user.email,
+          name: getDisplayName(session.user),
+        });
         setScreen("app");
         fetchTickets();
       }
@@ -36,8 +64,19 @@ export default function App() {
   }, []);
 
   async function fetchTickets() {
-    const { data, error } = await supabase.from("listings").select("*").order("created_at", { ascending: false });
-    if (!error) setTickets(data);
+    setTicketLoading(true);
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from("listings").select("*").order("created_at", { ascending: false }),
+        "Listings are taking too long to load. Try refreshing the page.",
+      );
+
+      if (!error) {
+        setTickets(data || []);
+      }
+    } finally {
+      setTicketLoading(false);
+    }
   }
 
   function showToast(msg) {
@@ -45,30 +84,83 @@ export default function App() {
     setTimeout(() => setToast(""), 2400);
   }
 
-  async function doLogin() {
-    if (!loginEmail.endsWith("@vassar.edu")) { setLoginErr("Only @vassar.edu addresses are allowed."); return; }
+  async function doLogin(event) {
+    event?.preventDefault();
+    const email = loginEmail.trim().toLowerCase();
+
+    if (!email.endsWith("@vassar.edu")) {
+      setLoginErr("Use your @vassar.edu email to sign in.");
+      return;
+    }
+
     setLoginErr("");
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPw });
-    setLoading(false);
-    if (error) { setLoginErr(error.message); return; }
-    setCurrentUser({ email: data.user.email, name: data.user.user_metadata?.name || data.user.email.split("@")[0] });
-    setScreen("app");
-    fetchTickets();
+    try {
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password: loginPw,
+        }),
+      );
+
+      if (error) {
+        setLoginErr(error.message);
+        return;
+      }
+
+      setCurrentUser({
+        email: data.user.email,
+        name: getDisplayName(data.user),
+      });
+      setScreen("app");
+      fetchTickets();
+    } catch (error) {
+      setLoginErr(error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function doSignup() {
-    if (!suEmail.endsWith("@vassar.edu")) { setSuErr("Only @vassar.edu addresses allowed."); return; }
-    if (!suName) { setSuErr("Please enter your name."); return; }
+  async function doSignup(event) {
+    event?.preventDefault();
+    const name = suName.trim();
+    const email = suEmail.trim().toLowerCase();
+
+    if (!name) {
+      setSuErr("Add your name so classmates know who they are buying from.");
+      return;
+    }
+
+    if (!email.endsWith("@vassar.edu")) {
+      setSuErr("Use your @vassar.edu email to create an account.");
+      return;
+    }
+
     setSuErr("");
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email: suEmail, password: suPw, options: { data: { name: suName } } });
-    setLoading(false);
-    if (error) { setSuErr(error.message); return; }
-    setCurrentUser({ email: suEmail, name: suName });
-    setScreen("app");
-    fetchTickets();
-    showToast("Welcome, " + suName.split(" ")[0] + "! Check your email to verify your account.");
+    try {
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
+          email,
+          password: suPw,
+          options: { data: { name } },
+        }),
+      );
+
+      if (error) {
+        setSuErr(error.message);
+        return;
+      }
+
+      setCurrentUser({ email: data.user?.email || email, name });
+      setScreen("app");
+      fetchTickets();
+      showToast(`Welcome, ${name.split(" ")[0]}! Check your email to verify your account.`);
+    } catch (error) {
+      setSuErr(error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function doLogout() {
@@ -78,18 +170,44 @@ export default function App() {
     setScreen("login");
   }
 
-  async function submitListing() {
-    if (!lmDate || !lmPrice) { setLmErr("Please fill in all fields."); return; }
+  async function submitListing(event) {
+    event?.preventDefault();
+    const price = Number.parseFloat(lmPrice);
+
+    if (!lmDate.trim() || Number.isNaN(price) || price < 0) {
+      setLmErr("Add a date and a valid asking price.");
+      return;
+    }
+
     setLmErr("");
-    const { error } = await supabase.from("listings").insert([{
-      event: lmEvent, date: lmDate, price: parseFloat(lmPrice),
-      notes: lmNotes, seller: currentUser.name, email: currentUser.email
-    }]);
-    if (error) { setLmErr(error.message); return; }
-    setShowListModal(false);
-    setLmDate(""); setLmPrice(""); setLmNotes("");
-    fetchTickets();
-    showToast("Listing posted!");
+    try {
+      const { error } = await withTimeout(
+        supabase.from("listings").insert([
+          {
+            event: lmEvent,
+            date: lmDate.trim(),
+            price,
+            notes: lmNotes.trim(),
+            seller: currentUser.name,
+            email: currentUser.email,
+          },
+        ]),
+      );
+
+      if (error) {
+        setLmErr(error.message);
+        return;
+      }
+
+      setShowListModal(false);
+      setLmDate("");
+      setLmPrice("");
+      setLmNotes("");
+      fetchTickets();
+      showToast("Listing posted.");
+    } catch (error) {
+      setLmErr(error.message);
+    }
   }
 
   async function removeListing(id) {
@@ -98,153 +216,339 @@ export default function App() {
     showToast("Listing removed.");
   }
 
-  const filtered = activeFilter === "all" ? tickets : tickets.filter(t => t.event === activeFilter);
-  const myListings = currentUser ? tickets.filter(t => t.email === currentUser.email) : [];
+  const filteredTickets = useMemo(() => {
+    if (activeFilter === "all") return tickets;
+    return tickets.filter((ticket) => ticket.event === activeFilter);
+  }, [activeFilter, tickets]);
 
-  const s = {
-    btn: { cursor: "pointer", padding: "9px 20px", borderRadius: 8, fontSize: 14, fontWeight: 500, border: "0.5px solid #ccc", background: "#fff", color: "#111" },
-    btnDark: { cursor: "pointer", padding: "9px 20px", borderRadius: 8, fontSize: 14, fontWeight: 500, border: "none", background: "#111", color: "#fff" },
-    btnSm: { cursor: "pointer", padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "0.5px solid #ccc", background: "#fff", color: "#111" },
-    card: { background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "20px 24px" },
-    input: { width: "100%", padding: "9px 12px", borderRadius: 8, border: "0.5px solid #ccc", fontSize: 14, fontFamily: "inherit", boxSizing: "border-box" },
-    label: { display: "block", fontSize: 12, color: "#888", marginBottom: 5 },
-    pill: (active) => ({ cursor: "pointer", fontSize: 13, padding: "6px 14px", borderRadius: 20, border: active ? "none" : "0.5px solid #ccc", background: active ? "#111" : "transparent", color: active ? "#fff" : "#888" }),
-  };
+  const myListings = currentUser
+    ? tickets.filter((ticket) => ticket.email === currentUser.email)
+    : [];
 
-  if (screen === "login") return (
-    <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
-      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
-      <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 4 }}>Senior tickets</h1>
-      <p style={{ fontSize: 14,  color: "#888", marginBottom: 28 }}>Buy and sell tickets to senior week events.</p>
-      <div style={s.card}>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="yourname@vassar.edu" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} /></div>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={loginPw} onChange={e => setLoginPw(e.target.value)} /></div>
-        {loginErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{loginErr}</p>}
-        <button style={{ ...s.btnDark, width: "100%", opacity: loading ? 0.6 : 1 }} onClick={doLogin}>{loading ? "Signing in..." : "Sign in"}</button>
-        <p style={{ textAlign: "center", fontSize: 13, color: "#888", marginTop: 14 }}>New here? <span style={{ color: "#111", cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("signup")}>Create account</span></p>
-      </div>
-      <p style={{ textAlign: "center", fontSize: 12, color: "#bbb", marginTop: 14 }}>Restricted to @vassar.edu</p>
-    </div>
-  );
+  if (screen === "login") {
+    return (
+      <main className="auth-page">
+        <section className="auth-panel" aria-labelledby="login-title">
+          <p className="eyebrow">Vassar College Class of 2026</p>
+          <h1 id="login-title">Senior tickets</h1>
+          <p className="auth-copy">A private marketplace for buying and selling senior week tickets.</p>
 
-  if (screen === "signup") return (
-    <div style={{ maxWidth: 360, margin: "64px auto", padding: "0 20px" }}>
-      <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa", marginBottom: 6 }}>VASSAR COLLEGE · CLASS OF 2026</p>
-      <h1 style={{ fontSize: 24, fontWeight: 500, marginBottom: 28 }}>Create account</h1>
-      <div style={s.card}>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Full name</label><input style={s.input} placeholder="Jordan Kim" value={suName} onChange={e => setSuName(e.target.value)} /></div>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Vassar email</label><input style={s.input} type="email" placeholder="jordankim@vassar.edu" value={suEmail} onChange={e => setSuEmail(e.target.value)} /></div>
-        <div style={{ marginBottom: 14 }}><label style={s.label}>Password</label><input style={s.input} type="password" placeholder="••••••••" value={suPw} onChange={e => setSuPw(e.target.value)} /></div>
-        {suErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{suErr}</p>}
-        <button style={{ ...s.btnDark, width: "100%", opacity: loading ? 0.6 : 1 }} onClick={doSignup}>{loading ? "Creating account..." : "Create account"}</button>
-        <p style={{ textAlign: "center", fontSize: 13, color: "#888", marginTop: 14 }}><span style={{ cursor: "pointer", textDecoration: "underline" }} onClick={() => setScreen("login")}>Back to sign in</span></p>
-      </div>
-    </div>
-  );
+          <form className="form-card" onSubmit={doLogin}>
+            <label>
+              <span>Vassar email</span>
+              <input
+                type="email"
+                placeholder="yourname@vassar.edu"
+                value={loginEmail}
+                onChange={(event) => setLoginEmail(event.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label>
+              <span>Password</span>
+              <input
+                type="password"
+                placeholder="Password"
+                value={loginPw}
+                onChange={(event) => setLoginPw(event.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </label>
+            {loginErr && <p className="error-text">{loginErr}</p>}
+            <button className="button button-primary" type="submit" disabled={loading}>
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+            <p className="switch-text">
+              New here?{" "}
+              <button type="button" onClick={() => setScreen("signup")}>
+                Create account
+              </button>
+            </p>
+          </form>
+          <p className="auth-note">Restricted to Vassar email addresses.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (screen === "signup") {
+    return (
+      <main className="auth-page">
+        <section className="auth-panel" aria-labelledby="signup-title">
+          <p className="eyebrow">Vassar College Class of 2026</p>
+          <h1 id="signup-title">Create account</h1>
+          <p className="auth-copy">Join with your Vassar email so classmates can trade safely.</p>
+
+          <form className="form-card" onSubmit={doSignup}>
+            <label>
+              <span>Full name</span>
+              <input
+                placeholder="Jordan Kim"
+                value={suName}
+                onChange={(event) => setSuName(event.target.value)}
+                autoComplete="name"
+                required
+              />
+            </label>
+            <label>
+              <span>Vassar email</span>
+              <input
+                type="email"
+                placeholder="jordankim@vassar.edu"
+                value={suEmail}
+                onChange={(event) => setSuEmail(event.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label>
+              <span>Password</span>
+              <input
+                type="password"
+                placeholder="Password"
+                value={suPw}
+                onChange={(event) => setSuPw(event.target.value)}
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+            </label>
+            {suErr && <p className="error-text">{suErr}</p>}
+            <button className="button button-primary" type="submit" disabled={loading}>
+              {loading ? "Creating account..." : "Create account"}
+            </button>
+            <p className="switch-text">
+              <button type="button" onClick={() => setScreen("login")}>
+                Back to sign in
+              </button>
+            </p>
+          </form>
+        </section>
+      </main>
+    );
+  }
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", minHeight: "100vh", width: "100%", maxWidth: "100%", background: "#fafafa" }}>
-      {toast && <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", background: "#111", color: "#fff", fontSize: 13, padding: "9px 18px", borderRadius: 8, zIndex: 300 }}>{toast}</div>}
+    <main className="app-shell">
+      {toast && <div className="toast">{toast}</div>}
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: "0.5px solid #e0e0e0", background: "#fff", marginBottom: 32 }}>
+      <header className="topbar">
         <div>
-          <p style={{ fontSize: 11, letterSpacing: "0.08em", color: "#aaa" }}>VASSAR COLLEGE · CLASS OF 2026</p>
-          <p style={{ fontSize: 17, fontWeight: 500, marginTop: 1 }}>Senior tickets</p>
+          <p className="eyebrow">Vassar College Class of 2026</p>
+          <h1>Senior tickets</h1>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 13, color: "#888" }}>{currentUser?.name}</span>
-          <button style={s.btnSm} onClick={doLogout}>Sign out</button>
+        <div className="account-actions">
+          <span>{currentUser?.name}</span>
+          <button className="button button-ghost" onClick={doLogout}>
+            Sign out
+          </button>
         </div>
-      </div>
+      </header>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "0 24px 20px" }}>
-        {["all", ...EVENTS].map(f => (
-          <button key={f} style={s.pill(activeFilter === f)} onClick={() => setActiveFilter(f)}>{f === "all" ? "All events" : f}</button>
+      <section className="market-hero">
+        <div>
+          <p className="eyebrow">Student-only exchange</p>
+          <h2>Find a ticket without the group-chat scramble.</h2>
+          <p>
+            Browse current listings, message sellers directly, and keep your own posts easy to manage.
+          </p>
+        </div>
+        <button className="button button-primary" onClick={() => setShowListModal(true)}>
+          List a ticket
+        </button>
+      </section>
+
+      <nav className="filter-row" aria-label="Filter listings by event">
+        {["all", ...EVENTS].map((filter) => (
+          <button
+            key={filter}
+            className={activeFilter === filter ? "filter-pill is-active" : "filter-pill"}
+            onClick={() => setActiveFilter(filter)}
+          >
+            {filter === "all" ? "All events" : filter}
+          </button>
         ))}
-      </div>
+      </nav>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: 24, padding: "0 24px 40px", alignItems: "start" }}>
-        <div>
-          {filtered.length === 0
-            ? <p style={{ fontSize: 14, color: "#888", padding: "24px 0" }}>No tickets listed for this event yet.</p>
-            : filtered.map(t => (
-              <div key={t.id} onClick={() => setSelectedTicket(t)} style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "18px 20px", marginBottom: 10, cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                  <div>
-                    <p style={{ fontSize: 11, letterSpacing: "0.06em", color: "#aaa", marginBottom: 4 }}>{t.event.toUpperCase()}</p>
-                    <p style={{ fontSize: 15, fontWeight: 500, marginBottom: 6 }}>{t.event}</p>
-                    <p style={{ fontSize: 13, color: "#888" }}>{t.date}</p>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <p style={{ fontSize: 22, fontWeight: 500, marginBottom: 4 }}>${t.price}</p>
-                    <p style={{ fontSize: 12, color: "#aaa" }}>{t.seller}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-        </div>
+      <div className="market-layout">
+        <section className="listing-column" aria-label="Ticket listings">
+          {ticketLoading ? (
+            <div className="empty-state">Loading listings...</div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="empty-state">
+              <h3>No tickets listed yet</h3>
+              <p>Try another event filter or check back soon.</p>
+            </div>
+          ) : (
+            filteredTickets.map((ticket) => (
+              <button
+                className="ticket-card"
+                key={ticket.id}
+                onClick={() => setSelectedTicket(ticket)}
+              >
+                <span className="ticket-event">{ticket.event}</span>
+                <span className="ticket-main">
+                  <span>
+                    <strong>{ticket.event}</strong>
+                    <small>{ticket.date}</small>
+                  </span>
+                  <span className="ticket-price">{formatPrice(ticket.price)}</span>
+                </span>
+                <span className="ticket-meta">
+                  <span>{ticket.seller}</span>
+                  <span>Tap for contact details</span>
+                </span>
+              </button>
+            ))
+          )}
+        </section>
 
-        <div>
-          <div style={{ ...s.card, marginBottom: 16 }}>
-            <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Selling a ticket?</p>
-            <p style={{ fontSize: 13, color: "#888", marginBottom: 14, lineHeight: 1.5 }}>Post your listing in under a minute. Only verified Vassar students can see it.</p>
-            <button style={{ ...s.btnDark, width: "100%", fontSize: 13 }} onClick={() => setShowListModal(true)}>+ List a ticket</button>
-          </div>
-          <div style={{ ...s.card, padding: "16px 20px" }}>
-            <p style={{ fontSize: 12, color: "#888", marginBottom: 10, fontWeight: 500 }}>My listings</p>
-            {myListings.length === 0
-              ? <p style={{ fontSize: 13, color: "#bbb" }}>None yet.</p>
-              : myListings.map(t => (
-                <div key={t.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "0.5px solid #f0f0f0" }}>
-                  <div><p style={{ fontSize: 13, fontWeight: 500 }}>{t.event}</p><p style={{ fontSize: 12, color: "#888" }}>${t.price}</p></div>
-                  <button style={{ ...s.btnSm, border: "none", background: "transparent", color: "#bbb" }} onClick={() => removeListing(t.id)}>✕</button>
-                </div>
-              ))}
-          </div>
-        </div>
+        <aside className="sidebar">
+          <section className="side-card">
+            <h2>Selling a ticket?</h2>
+            <p>Post your ticket with the event, date, price, and the best way for classmates to pay you.</p>
+            <button className="button button-primary" onClick={() => setShowListModal(true)}>
+              List a ticket
+            </button>
+          </section>
+
+          <section className="side-card">
+            <h2>My listings</h2>
+            {myListings.length === 0 ? (
+              <p className="muted">Nothing posted yet.</p>
+            ) : (
+              <ul className="my-listings">
+                {myListings.map((ticket) => (
+                  <li key={ticket.id}>
+                    <span>
+                      <strong>{ticket.event}</strong>
+                      <small>{formatPrice(ticket.price)}</small>
+                    </span>
+                    <button
+                      className="icon-button"
+                      aria-label={`Remove ${ticket.event} listing`}
+                      onClick={() => removeListing(ticket.id)}
+                    >
+                      x
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </aside>
       </div>
 
       {showListModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ ...s.card, width: 420, padding: 28 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 500, marginBottom: 18 }}>List a ticket</h3>
-            <div style={{ marginBottom: 14 }}><label style={s.label}>Event</label><select style={s.input} value={lmEvent} onChange={e => setLmEvent(e.target.value)}>{EVENTS.map(ev => <option key={ev}>{ev}</option>)}</select></div>
-            <div style={{ marginBottom: 14 }}><label style={s.label}>Date & time</label><input style={s.input} placeholder="e.g. Sat, May 24 · 7pm" value={lmDate} onChange={e => setLmDate(e.target.value)} /></div>
-            <div style={{ marginBottom: 14 }}><label style={s.label}>Asking price ($)</label><input style={s.input} type="number" placeholder="40" value={lmPrice} onChange={e => setLmPrice(e.target.value)} /></div>
-            <div style={{ marginBottom: 14 }}><label style={s.label}>Venmo handle + notes</label><textarea style={{ ...s.input, height: 72, resize: "none" }} placeholder="@yourvenmo, zelle, phone #, etc." value={lmNotes} onChange={e => setLmNotes(e.target.value)} /></div>
-            {lmErr && <p style={{ fontSize: 13, color: "red", marginBottom: 10 }}>{lmErr}</p>}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button style={s.btn} onClick={() => setShowListModal(false)}>Cancel</button>
-              <button style={s.btnDark} onClick={submitListing}>Post listing</button>
+        <div className="modal-backdrop" onMouseDown={() => setShowListModal(false)}>
+          <form className="modal-card" onSubmit={submitListing} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">New listing</p>
+                <h2>List a ticket</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setShowListModal(false)} aria-label="Close modal">
+                x
+              </button>
             </div>
-          </div>
+            <label>
+              <span>Event</span>
+              <select value={lmEvent} onChange={(event) => setLmEvent(event.target.value)}>
+                {EVENTS.map((eventName) => (
+                  <option key={eventName}>{eventName}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Date and time</span>
+              <input
+                placeholder="Sat, May 24 at 7pm"
+                value={lmDate}
+                onChange={(event) => setLmDate(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              <span>Asking price</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="40"
+                value={lmPrice}
+                onChange={(event) => setLmPrice(event.target.value)}
+                required
+              />
+            </label>
+            <label>
+              <span>Payment/contact notes</span>
+              <textarea
+                placeholder="@yourvenmo, Zelle, phone number, or pickup details"
+                value={lmNotes}
+                onChange={(event) => setLmNotes(event.target.value)}
+              />
+            </label>
+            {lmErr && <p className="error-text">{lmErr}</p>}
+            <div className="modal-actions">
+              <button className="button button-ghost" type="button" onClick={() => setShowListModal(false)}>
+                Cancel
+              </button>
+              <button className="button button-primary" type="submit">
+                Post listing
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
       {selectedTicket && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-          <div style={{ ...s.card, width: 420, padding: 28 }}>
-            <p style={{ fontSize: 11, letterSpacing: "0.07em", color: "#aaa", marginBottom: 6 }}>{selectedTicket.event.toUpperCase()}</p>
-            <h3 style={{ fontSize: 16, fontWeight: 500, marginBottom: 18 }}>{selectedTicket.event}</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
-              <div style={{ background: "#f5f5f5", borderRadius: 8, padding: 12 }}><p style={{ fontSize: 11, color: "#aaa", marginBottom: 3 }}>Date</p><p style={{ fontSize: 14, fontWeight: 500 }}>{selectedTicket.date}</p></div>
-              <div style={{ background: "#f5f5f5", borderRadius: 8, padding: 12 }}><p style={{ fontSize: 11, color: "#aaa", marginBottom: 3 }}>Price</p><p style={{ fontSize: 20, fontWeight: 500 }}>${selectedTicket.price}</p></div>
+        <div className="modal-backdrop" onMouseDown={() => setSelectedTicket(null)}>
+          <section className="modal-card" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">{selectedTicket.event}</p>
+                <h2>{selectedTicket.event}</h2>
+              </div>
+              <button className="icon-button" onClick={() => setSelectedTicket(null)} aria-label="Close modal">
+                x
+              </button>
             </div>
-            <div style={{ borderTop: "0.5px solid #eee", paddingTop: 14, marginBottom: 14 }}>
-              <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>Seller</p>
-              <p style={{ fontSize: 14, fontWeight: 500 }}>{selectedTicket.seller}</p>
-              <p style={{ fontSize: 13, color: "#888", marginTop: 2 }}>{selectedTicket.email}</p>
+            <div className="detail-grid">
+              <div>
+                <span>Date</span>
+                <strong>{selectedTicket.date}</strong>
+              </div>
+              <div>
+                <span>Price</span>
+                <strong>{formatPrice(selectedTicket.price)}</strong>
+              </div>
             </div>
-            <p style={{ fontSize: 13, color: "#888", marginBottom: 20, lineHeight: 1.6 }}>{selectedTicket.notes || "No additional notes."}</p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button style={s.btn} onClick={() => setSelectedTicket(null)}>Close</button>
+            <div className="seller-block">
+              <span>Seller</span>
+              <strong>{selectedTicket.seller}</strong>
+              <a href={`mailto:${selectedTicket.email}?subject=Re: ${selectedTicket.event} ticket`}>
+                {selectedTicket.email}
+              </a>
+            </div>
+            <p className="notes-block">{selectedTicket.notes || "No additional notes."}</p>
+            <div className="modal-actions">
+              <button className="button button-ghost" onClick={() => setSelectedTicket(null)}>
+                Close
+              </button>
               {selectedTicket.email !== currentUser?.email && (
-                <button style={s.btnDark} onClick={() => window.location.href = `mailto:${selectedTicket.email}?subject=Re: ${selectedTicket.event} ticket`}>Email seller</button>
+                <a
+                  className="button button-primary"
+                  href={`mailto:${selectedTicket.email}?subject=Re: ${selectedTicket.event} ticket`}
+                >
+                  Email seller
+                </a>
               )}
             </div>
-          </div>
+          </section>
         </div>
       )}
-    </div>
+    </main>
   );
 }
